@@ -3,6 +3,8 @@
 
 #include "blockchain.h"
 
+#define COINBASE_AMOUNT 50
+
 /**
  * struct transaction_s - Transaction structure
  *
@@ -135,4 +137,4 @@ void transaction_destroy(transaction_t *transaction);
 llist_t *update_unspent(llist_t *transactions,
 	uint8_t block_hash[SHA256_DIGEST_LENGTH], llist_t *all_unspent);
 
-#endif
+#endif /* TRANSACTION_H */
