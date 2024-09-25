@@ -1,29 +1,33 @@
 #include "blockchain.h"
 
+
 /**
- * hash_matches_difficulty - checks whether a given hash matches
- *                           a given difficulty
- * @hash: hash to check
- * @difficulty: minimum difficulty the hash should match
- * Return: 1 if difficulty is respected or 0 otherwise
- */
+* hash_matches_difficulty - checks if hash matches difficulty
+* @hash: hash to check
+* @difficulty: difficulty of a block
+* Return: 1 if hash matches difficulty, 0 otherwise
+*/
 int hash_matches_difficulty(uint8_t const hash[SHA256_DIGEST_LENGTH],
-	uint32_t difficulty)
+
+uint32_t difficulty)
 {
-	uint8_t i = 0, msb = difficulty & 7;
+	uint32_t i, mod, byte, bit;
 
-	difficulty -= difficulty & 7;
-	difficulty /= 8;
+	mod = difficulty / 8;
+	byte = difficulty % 8;
 
-	while (i < difficulty)
+	for (i = 0; i < mod; i++)
 	{
-		if (hash[i] & 1)
+		if (hash[i] != 0)
 			return (0);
-		i++;
 	}
-
-	if (hash[difficulty] >> (8 - msb))
+	if (hash[mod] >> (8 - byte))
 		return (0);
-
+	for (bit = 0; bit < (byte - 1); bit++)
+	{
+		if ((hash[mod] >> (7 - bit)) & 1)
+			return (0);
+	}
 	return (1);
 }
+

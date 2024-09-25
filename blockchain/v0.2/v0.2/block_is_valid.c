@@ -1,74 +1,51 @@
 #include "blockchain.h"
 
-/**
- * match_genesis - check if block matches genesis block
- *
- * @block: Block to check
- * Return: 0 on success or -1 on failure
- */
-int match_genesis(block_t const *block)
-{
-	if (memcmp(block->data.buffer, GENESIS_DATA, GENESIS_DATA_LEN) != 0)
-		return (-1);
-	if (block->data.len != GENESIS_DATA_LEN)
-		return (-1);
-	if (memcmp(block->hash, GENESIS_HASH, SHA256_DIGEST_LENGTH) != 0)
-		return (-1);
-	if (block->info.timestamp != GENESIS_TIMESTAMP)
-		return (-1);
-	return (0);
-}
+/* GENESIS_BLOCK - first block in the blockchain */
+#define GENESIS_BLOCK                                                    \
+	{                                                                          \
+		{                                                                      \
+			0 /* index */,                                                     \
+			0,			/* difficulty */                                       \
+			1537578000, /* timestamp */                                        \
+			0,			/* nonce */                                            \
+			{0}			/* prev_hash */                                        \
+		},                                                                     \
+			{                                                                  \
+				"Holberton School", /* buffer */                               \
+				16					/* len */                                  \
+			},						/* hashed data */                          \
+			"\xc5\x2c\x26\xc8\xb5\x46\x16\x39\x63\x5d\x8e\xdf\x2a\x97\xd4\x8d" \
+			"\x0c\x8e\x00\x09\xc8\x17\xf2\xb1\xd3\xd7\xff\x2f\x04\x51\x58\x03" \
+	}
 
 /**
- * block_is_valid - verifies that a Block is valid
- *
- * @block: Block to check
- * @prev_block: previous Block in the Blockchain or NULL if block is genesis
- *
- * Block requirements:
- *  1 - block should not be NULL
- *  2 - prev_block should be NULL ONLY if block‘s index is 0
- *  3 - If the Block’s index is 0, the Block should match the Genesis Block
- *      described in the first task
- *  4 - The Block’s index must be the previous Block’s index, plus 1
- *  5 - The computed hash of the previous block must match the one it stores
- *  6 - The computed hash of the previous block must match the reference one
- *  7 - The computed hash of the Block must match the one it stores
- *  8 - The Block data length must not exceed BLOCKCHAIN_DATA_MAX
- *
- * Return: EXIT_SUCCESS or EXIT_FAILURE
+ * block_is_valid - checks if this and previous block are valid
+ * @block: pointer to this block in the chain
+ * @prev_block: pointer to previous block in the chain or NULL
+ * Return: 0 if valid else 1 if invalid
  */
 int block_is_valid(block_t const *block, block_t const *prev_block)
 {
-	uint8_t block_sha[SHA256_DIGEST_LENGTH];
-	uint8_t prev_hash[SHA256_DIGEST_LENGTH];
+	uint8_t hash_buf[SHA256_DIGEST_LENGTH] = {0};
+	block_t const _genesis = GENESIS_BLOCK;
 
-	if (!block)
-		return (EXIT_FAILURE);
+	if (!block || (!prev_block && block->info.index != 0))
+		return (1);
 	if (block->info.index == 0)
-	{
-		if (prev_block)
-			return (EXIT_FAILURE);
-		if (match_genesis(block) == -1)
-			return (EXIT_FAILURE);
-	}
-	if (prev_block)
-	{
-		if (block->info.index - 1 != prev_block->info.index)
-			return (EXIT_FAILURE);
-		if (!block_hash(prev_block, prev_hash))
-			return (EXIT_FAILURE);
-		if (memcmp(block->info.prev_hash, prev_hash, SHA256_DIGEST_LENGTH) != 0)
-			return (EXIT_FAILURE);
-	}
-	if (!block_hash(block, block_sha))
-		return (EXIT_FAILURE);
-	if (memcmp(block->hash, block_sha, SHA256_DIGEST_LENGTH) != 0)
-		return (EXIT_FAILURE);
+		return (memcmp(block, &_genesis, sizeof(_genesis)));
+	if (block->info.index != prev_block->info.index + 1)
+		return (1);
+	if (!block_hash(prev_block, hash_buf) ||
+		memcmp(hash_buf, prev_block->hash, SHA256_DIGEST_LENGTH))
+		return (1);
+	if (memcmp(prev_block->hash, block->info.prev_hash, SHA256_DIGEST_LENGTH))
+		return (1);
+	if (!block_hash(block, hash_buf) ||
+		memcmp(hash_buf, block->hash, SHA256_DIGEST_LENGTH))
+		return (1);
 	if (block->data.len > BLOCKCHAIN_DATA_MAX)
-		return (EXIT_FAILURE);
+		return (1);
 	if (!hash_matches_difficulty(block->hash, block->info.difficulty))
-		return (-1);
-
-	return (EXIT_SUCCESS);
+		return (1);
+	return (0);
 }

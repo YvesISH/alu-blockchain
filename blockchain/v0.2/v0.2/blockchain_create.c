@@ -1,61 +1,51 @@
 #include "blockchain.h"
 
-/**
- * genesis_create - creates Genesis Block
- *
- * Return: pointer to created Genesis block or NULL on failure
- */
-block_t *genesis_create(void)
-{
-	block_t *genesis;
-
-	genesis = calloc(1, sizeof(*genesis));
-	if (!genesis)
-		return (NULL);
-
-	memcpy(genesis->data.buffer, GENESIS_DATA, GENESIS_DATA_LEN);
-	genesis->data.len = GENESIS_DATA_LEN;
-	memcpy(genesis->hash, GENESIS_HASH, SHA256_DIGEST_LENGTH);
-	genesis->info.timestamp = GENESIS_TIMESTAMP;
-
-	return (genesis);
-}
+#define HASH "\xc5\x2c\x26\xc8\xb5\x46\x16\x39\x63\x5d\x8e\xdf\x2a\x97\xd4\x8d\x0c\x8e\x00\x09\xc8\x17\xf2\xb1\xd3\xd7\xff\x2f\x04\x51\x58\x03"
 
 /**
- * blockchain_create - creates a Blockchain structure
- *
- * Return: pointer to created Blockchain
- */
+* blockchain_create - creates a Blockchain structure, and initializes it
+*
+* Return: a pointer to the created blockchain
+*/
 blockchain_t *blockchain_create(void)
 {
-	blockchain_t *blockchain;
-	block_t *genesis;
+	blockchain_t *blockchain = NULL;
+	block_t *genesis_block = NULL;
+	llist_t *llist = NULL;
+
+	genesis_block = calloc(1, sizeof(*genesis_block));
+	if (genesis_block == NULL)
+		return (NULL);
+
+	genesis_block->info.index = 0;
+	genesis_block->info.difficulty = 0;
+	genesis_block->info.timestamp = 1537578000;
+	genesis_block->info.nonce = 0;
+	memset(genesis_block->info.prev_hash, 0, SHA256_DIGEST_LENGTH);
+	memcpy(genesis_block->data.buffer, "Holberton School", 16);
+	genesis_block->data.len = 16;
+	memcpy(genesis_block->hash, HASH, SHA256_DIGEST_LENGTH);
+
+	llist = llist_create(MT_SUPPORT_TRUE);
+	if (llist == NULL)
+	{
+		free(genesis_block);
+		return (NULL);
+	}
+
+	if (llist_add_node(llist, genesis_block, ADD_NODE_FRONT) != 0)
+	{
+		llist_destroy(llist, 1, NULL), free(genesis_block);
+		return (NULL);
+	}
 
 	blockchain = calloc(1, sizeof(*blockchain));
-	if (!blockchain)
+	if (blockchain == NULL)
 	{
-		perror("Malloc");
+		llist_destroy(llist, 1, NULL), free(genesis_block);
 		return (NULL);
 	}
-	genesis = genesis_create();
-	if (!genesis)
-	{
-		free(blockchain);
-		perror("Malloc");
-		return (NULL);
-	}
-	blockchain->chain = llist_create(MT_SUPPORT_TRUE);
-	if (!blockchain->chain)
-	{
-		free(blockchain), free(genesis);
-		perror("Blockchain->chain");
-		return (NULL);
-	}
-	if (llist_add_node(blockchain->chain, genesis, ADD_NODE_FRONT) == -1)
-	{
-		free(blockchain), free(genesis);
-		perror("llist_add_node");
-		return (NULL);
-	}
+	blockchain->chain = llist;
+
 	return (blockchain);
 }

@@ -1,68 +1,72 @@
 #include "blockchain.h"
+#include <fcntl.h>
+#include <unistd.h>
+
+
+int block_serialize(llist_node_t node_ptr, int idx, void *arg);
 
 /**
- * write_block - writes info for a block_t struct to file pointer
- *
- * @node: current block in blockchain to print
- * @file_pointer: file stream to write to
- * Return: 0 on success, -1 on failure
- */
-int write_block(llist_node_t node, void *file_pointer)
-{
-	block_t *block;
-	FILE *fp;
+*  blockchain_serialize - serializes a blockchain into a file
+*
+* @blockchain: pointer to the Blockchain structure to be serialized
+* @path: path to a file
+*
+* Return: 0 if successful, -1 if failed
+*/
+int blockchain_serialize(blockchain_t const *blockchain,
 
-	if (!node || !file_pointer)
+char const *path)
+{
+	FILE *file;
+	hblk_file_t file_header;
+
+
+	if (!blockchain || !path)
 		return (-1);
 
-	block = node;
-	fp = (FILE *)file_pointer;
+	/*Set header values*/
+	memcpy(file_header.hblk_magic, HBLK_MAGIC, strlen(HBLK_MAGIC));
+	memcpy(file_header.hblk_version, HBLK_VERSION, strlen(HBLK_VERSION));
+	file_header.hblk_endian = _get_endianness();
+	file_header.hblk_blocks = llist_size(blockchain->chain);
 
-	fwrite((void *)&block->info, sizeof(block->info), 1, fp);
-	fwrite((void *)&block->data.len, sizeof(block->data.len), 1, fp);
-	fwrite(block->data.buffer, block->data.len, 1, fp);
-	fwrite(block->hash, sizeof(block->hash), 1, fp);
+	if (file_header.hblk_blocks == -1)
+		return (-1);
+
+	file = fopen(path, "w");
+	if (!file)
+		return (-1);
+
+	fwrite(&file_header, sizeof(file_header), 1, file);
+
+	llist_for_each(blockchain->chain, (node_func_t)block_serialize, file);
+
+	fclose(file);
 	return (0);
 }
+
+
 /**
- * blockchain_serialize - serializes a Blockchain into a file
- *
- * @blockchain: points to the Blockchain to serialize
- * @path: path to a file to serialize the Blockchain into
- * Return: 0 on success or -1 on failure
- */
-int blockchain_serialize(blockchain_t const *blockchain, char const *path)
+* block_serialize - serializes a block into a file
+* @node_ptr: pointer to the node to serialize
+* @idx: index of the node
+* @arg: file descriptor
+* Return: 0 if successful, -1 if failed
+*/
+int block_serialize(llist_node_t node_ptr, int idx, void *arg)
 {
-	FILE *fp;
-	int blocks, i;
-	uint8_t endian;
+	block_t *block = (block_t *)node_ptr;
+	FILE *file = (FILE *)arg;
 
-	if (!blockchain || !blockchain->chain || !path)
+	if (!block || !file)
 		return (-1);
 
-	fp = fopen(path, "w");
-	if (!fp)
-		return (-1);
+	/*unused var*/
+	(void)idx;
 
-	/* 0x00	4	hblk_magic      48 42 4c 4b */
-	fwrite(HBLK_MAGIC, strlen(HBLK_MAGIC), 1, fp);
-	/* 0x04 3	hblk_version    x.y         */
-	fwrite(HBLK_VERSION, strlen(HBLK_VERSION), 1, fp);
-	/* 0x07	1	hblk_endian     1 or 2      */
-	endian = _get_endianness();
-	fwrite(&endian, 1, 1, fp);
-	/* 0x08	4	hblk_blocks                 */
-	blocks = llist_size(blockchain->chain);
-	fwrite(&blocks, sizeof(blocks), 1, fp);
-	/* 0x0C n	blocks                      */
-	for (i = 0; i < blocks; i++)
-	{
-		if (write_block(llist_get_node_at(blockchain->chain, i), fp) == -1)
-		{
-			fclose(fp);
-			return (-1);
-		}
-	}
-	fclose(fp);
-	return (0);
+	fwrite((void *)&block->info, sizeof(block->info), 1, file);
+	fwrite((void *)&block->data.len, sizeof(block->data.len), 1, file);
+	fwrite(block->data.buffer, block->data.len, 1, file);
+	fwrite(block->hash, sizeof(block->hash), 1, file);
+	return (sizeof(*block));
 }

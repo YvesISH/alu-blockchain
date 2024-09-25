@@ -1,39 +1,30 @@
 #include "blockchain.h"
 
+
 /**
- * block_create - creates new Block structure and initializes it
- *
- * @prev: pointer to previous Block in Blockchain
- * @data: memory area to duplicate in the Block's data
- * @data_len: stores number of bytes to duplicate
- *
- * index must be different than previous
- * difficulty and nonce must be initialized to 0
- * timestamp should be initialized with time(2) syscall
- * hash must be zeroed
- *
- * Return: pointer to allocated Block
- */
+* block_create - creates a Block structure and initializes it
+*
+* @prev: pointer to the previous Block in the Blockchain
+* @data: pointer to a memory area to duplicate in the Block’s data
+* @data_len: number of bytes to duplicate in data
+*
+* Return: pointer to the allocated Block, or NULL upon failure
+*/
 block_t *block_create(block_t const *prev, int8_t const *data,
+
 	uint32_t data_len)
 {
-	block_t *new_block;
-	uint32_t length;
+	block_t *block;
 
-	new_block = calloc(1, sizeof(*new_block));
-	if (!new_block)
-	{
-		perror("Calloc");
+	block = calloc(1, sizeof(*block));
+	if (block == NULL)
 		return (NULL);
-	}
-	new_block->info.index = prev->info.index + 1;
-	new_block->info.difficulty = 0;
-	new_block->info.nonce = 0;
-	new_block->info.timestamp = (uint64_t)time(NULL);
-	memcpy(new_block->info.prev_hash, prev->hash, SHA256_DIGEST_LENGTH);
-	length = data_len < BLOCKCHAIN_DATA_MAX ? data_len : BLOCKCHAIN_DATA_MAX;
-	memcpy(new_block->data.buffer, data, length);
-	new_block->data.len = length;
-
-	return (new_block);
+	block->info.index = prev->info.index + 1;
+	block->info.difficulty = 0;
+	block->info.timestamp = time(NULL);
+	block->info.nonce = 0;
+	memcpy(block->info.prev_hash, prev->hash, SHA256_DIGEST_LENGTH);
+	memcpy(block->data.buffer, data, data_len);
+	block->data.len = data_len;
+	return (block);
 }
